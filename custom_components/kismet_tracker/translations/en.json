@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kismet Tracker",
+        "description": "Connect to the Kismet REST API (port 2501 by default). Only MAC addresses you list are tracked.",
+        "data": {
+          "host": "Kismet host or IP",
+          "port": "HTTP port",
+          "use_ssl": "Use HTTPS",
+          "verify_ssl": "Verify SSL certificate",
+          "username": "HTTP username (optional)",
+          "password": "HTTP password (optional)",
+          "scan_interval": "Polling interval (seconds)",
+          "whitelist": "MAC allow list (comma or newline separated)",
+          "ignore_randomized_local_mac": "Ignore locally administered (randomized) MACs in the allow list",
+          "away_timeout": "Away timeout (seconds) since last Kismet observation",
+          "min_rssi_for_home": "Minimum RSSI for home (-200 disables RSSI gate)",
+          "enable_air_sensors": "Enable recent RF device count sensor",
+          "recent_devices_window": "Seconds for recent-device window sensor"
+        }
+      },
+      "init": {
+        "title": "Kismet Tracker options",
+        "description": "Adjust polling, allow list, and optional RF activity sensor.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "whitelist": "MAC allow list (comma or newline separated)",
+          "ignore_randomized_local_mac": "Ignore locally administered (randomized) MACs in the allow list",
+          "away_timeout": "Away timeout (seconds) since last Kismet observation",
+          "min_rssi_for_home": "Minimum RSSI for home (-200 disables RSSI gate)",
+          "enable_air_sensors": "Enable recent RF device count sensor",
+          "recent_devices_window": "Seconds for recent-device window sensor"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the Kismet API",
+      "invalid_mac": "Invalid MAC address in the allow list"
+    }
+  }
+}
