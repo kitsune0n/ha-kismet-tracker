@@ -21,6 +21,7 @@ from .const import (
     CONF_PORT,
     CONF_RECENT_WINDOW,
     CONF_SCAN_INTERVAL,
+    CONF_TRACK_ALL_VISIBLE,
     CONF_USE_SSL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
@@ -98,6 +99,10 @@ def _user_data_schema(defaults: dict[str, Any]) -> vol.Schema:
                 default=defaults.get(CONF_SCAN_INTERVAL, 30),
             ): vol.All(vol.Coerce(int), vol.Range(min=5, max=3600)),
             vol.Required(
+                CONF_TRACK_ALL_VISIBLE,
+                default=defaults.get(CONF_TRACK_ALL_VISIBLE, False),
+            ): bool,
+            vol.Required(
                 CONF_WHITELIST,
                 default=defaults.get(CONF_WHITELIST, ""),
             ): str,
@@ -138,6 +143,10 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_SCAN_INTERVAL,
                 default=defaults.get(CONF_SCAN_INTERVAL, 30),
             ): vol.All(vol.Coerce(int), vol.Range(min=5, max=3600)),
+            vol.Required(
+                CONF_TRACK_ALL_VISIBLE,
+                default=defaults.get(CONF_TRACK_ALL_VISIBLE, False),
+            ): bool,
             vol.Required(
                 CONF_WHITELIST,
                 default=defaults.get(CONF_WHITELIST, ""),
@@ -182,26 +191,30 @@ class KismetConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
+            track_all = bool(user_input.get(CONF_TRACK_ALL_VISIBLE, False))
             try:
                 macs = parse_mac_list(user_input[CONF_WHITELIST])
             except ValueError:
                 errors["base"] = "invalid_mac"
             else:
-                payload = {**user_input, CONF_WHITELIST: macs}
-                unique_id = f"{payload[CONF_HOST]}:{payload[CONF_PORT]}"
-                await self.async_set_unique_id(unique_id)
-                self._abort_if_unique_id_configured()
-                try:
-                    await _validate_connection(self.hass, payload)
-                except CannotConnect:
-                    errors["base"] = "cannot_connect"
-                except aiohttp.ClientResponseError:
-                    errors["base"] = "cannot_connect"
-                except aiohttp.ClientError:
-                    errors["base"] = "cannot_connect"
+                if not track_all and not macs:
+                    errors["base"] = "whitelist_required"
                 else:
-                    title = f"Kismet {payload[CONF_HOST]}:{payload[CONF_PORT]}"
-                    return self.async_create_entry(title=title, data=payload)
+                    payload = {**user_input, CONF_WHITELIST: macs}
+                    unique_id = f"{payload[CONF_HOST]}:{payload[CONF_PORT]}"
+                    await self.async_set_unique_id(unique_id)
+                    self._abort_if_unique_id_configured()
+                    try:
+                        await _validate_connection(self.hass, payload)
+                    except CannotConnect:
+                        errors["base"] = "cannot_connect"
+                    except aiohttp.ClientResponseError:
+                        errors["base"] = "cannot_connect"
+                    except aiohttp.ClientError:
+                        errors["base"] = "cannot_connect"
+                    else:
+                        title = f"Kismet {payload[CONF_HOST]}:{payload[CONF_PORT]}"
+                        return self.async_create_entry(title=title, data=payload)
 
         defaults: dict[str, Any] = {}
         if user_input:
@@ -241,23 +254,27 @@ class KismetOptionsFlow(config_entries.OptionsFlow):
             merged_for_defaults = dict(merged)
 
         if user_input is not None:
+            track_all = bool(user_input.get(CONF_TRACK_ALL_VISIBLE, False))
             try:
                 macs = parse_mac_list(user_input[CONF_WHITELIST])
             except ValueError:
                 errors["base"] = "invalid_mac"
             else:
-                options = {**user_input, CONF_WHITELIST: macs}
-                probe = _merge_for_probe(self._entry, options)
-                try:
-                    await _validate_connection(self.hass, probe)
-                except CannotConnect:
-                    errors["base"] = "cannot_connect"
-                except aiohttp.ClientResponseError:
-                    errors["base"] = "cannot_connect"
-                except aiohttp.ClientError:
-                    errors["base"] = "cannot_connect"
+                if not track_all and not macs:
+                    errors["base"] = "whitelist_required"
                 else:
-                    return self.async_create_entry(title="", data=options)
+                    options = {**user_input, CONF_WHITELIST: macs}
+                    probe = _merge_for_probe(self._entry, options)
+                    try:
+                        await _validate_connection(self.hass, probe)
+                    except CannotConnect:
+                        errors["base"] = "cannot_connect"
+                    except aiohttp.ClientResponseError:
+                        errors["base"] = "cannot_connect"
+                    except aiohttp.ClientError:
+                        errors["base"] = "cannot_connect"
+                    else:
+                        return self.async_create_entry(title="", data=options)
 
         return self.async_show_form(
             step_id="init",
