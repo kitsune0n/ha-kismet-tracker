@@ -17,6 +17,8 @@ DEFAULT_RECENT_DEVICES_WINDOW = 120
 DEFAULT_MIN_RSSI = -85
 # Kismet last-time window (seconds) when tracking all visible devices.
 DEFAULT_TRACK_ALL_LOOKBACK_SEC = 86400
+TRACK_ALL_LOOKBACK_MIN_SEC = 60
+TRACK_ALL_LOOKBACK_MAX_SEC = 604800
 # RSSI values at or below this skip the RSSI gate (Kismet may omit signal on some PHYs).
 RSSI_HOME_DISABLED_THRESHOLD = -200
 

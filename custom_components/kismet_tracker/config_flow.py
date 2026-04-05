@@ -21,6 +21,7 @@ from .const import (
     CONF_PORT,
     CONF_RECENT_WINDOW,
     CONF_SCAN_INTERVAL,
+    CONF_TRACK_ALL_LOOKBACK_SEC,
     CONF_TRACK_ALL_VISIBLE,
     CONF_USE_SSL,
     CONF_USERNAME,
@@ -30,9 +31,12 @@ from .const import (
     DEFAULT_MIN_RSSI,
     DEFAULT_PORT,
     DEFAULT_RECENT_DEVICES_WINDOW,
+    DEFAULT_TRACK_ALL_LOOKBACK_SEC,
     DEFAULT_VERIFY_SSL,
     DOMAIN,
     DEFAULT_IGNORE_RANDOMIZED_LOCAL_MAC,
+    TRACK_ALL_LOOKBACK_MAX_SEC,
+    TRACK_ALL_LOOKBACK_MIN_SEC,
 )
 from .coordinator import build_base_url
 from .kismet_client import KismetClient
@@ -102,6 +106,16 @@ def _user_data_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_TRACK_ALL_VISIBLE,
                 default=defaults.get(CONF_TRACK_ALL_VISIBLE, False),
             ): bool,
+            vol.Optional(
+                CONF_TRACK_ALL_LOOKBACK_SEC,
+                default=defaults.get(
+                    CONF_TRACK_ALL_LOOKBACK_SEC,
+                    DEFAULT_TRACK_ALL_LOOKBACK_SEC,
+                ),
+            ): vol.All(
+                vol.Coerce(int),
+                vol.Range(min=TRACK_ALL_LOOKBACK_MIN_SEC, max=TRACK_ALL_LOOKBACK_MAX_SEC),
+            ),
             vol.Required(
                 CONF_WHITELIST,
                 default=defaults.get(CONF_WHITELIST, ""),
@@ -147,6 +161,16 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_TRACK_ALL_VISIBLE,
                 default=defaults.get(CONF_TRACK_ALL_VISIBLE, False),
             ): bool,
+            vol.Optional(
+                CONF_TRACK_ALL_LOOKBACK_SEC,
+                default=defaults.get(
+                    CONF_TRACK_ALL_LOOKBACK_SEC,
+                    DEFAULT_TRACK_ALL_LOOKBACK_SEC,
+                ),
+            ): vol.All(
+                vol.Coerce(int),
+                vol.Range(min=TRACK_ALL_LOOKBACK_MIN_SEC, max=TRACK_ALL_LOOKBACK_MAX_SEC),
+            ),
             vol.Required(
                 CONF_WHITELIST,
                 default=defaults.get(CONF_WHITELIST, ""),

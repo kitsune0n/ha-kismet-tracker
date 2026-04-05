@@ -35,6 +35,8 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_TRACK_ALL_LOOKBACK_SEC,
     DEFAULT_VERIFY_SSL,
+    TRACK_ALL_LOOKBACK_MAX_SEC,
+    TRACK_ALL_LOOKBACK_MIN_SEC,
     DOMAIN,
     LOGGER,
     RSSI_HOME_DISABLED_THRESHOLD,
@@ -115,10 +117,8 @@ class KismetDataUpdateCoordinator(DataUpdateCoordinator[KismetCoordinatorData]):
     def track_all_lookback_sec(self) -> int:
         """Seconds for last-time query in track-all mode."""
         merged = merge_entry_config(self.config_entry)
-        return max(
-            60,
-            int(merged.get(CONF_TRACK_ALL_LOOKBACK_SEC, DEFAULT_TRACK_ALL_LOOKBACK_SEC)),
-        )
+        raw = int(merged.get(CONF_TRACK_ALL_LOOKBACK_SEC, DEFAULT_TRACK_ALL_LOOKBACK_SEC))
+        return max(TRACK_ALL_LOOKBACK_MIN_SEC, min(TRACK_ALL_LOOKBACK_MAX_SEC, raw))
 
     def whitelisted_macs(self) -> list[str]:
         """MAC addresses configured for tracking (whitelist mode only)."""
