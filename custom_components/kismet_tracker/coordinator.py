@@ -23,6 +23,8 @@ from .const import (
     CONF_PORT,
     CONF_RECENT_WINDOW,
     CONF_SCAN_INTERVAL,
+    CONF_TRACK_ALL_LOOKBACK_SEC,
+    CONF_TRACK_ALL_VISIBLE,
     CONF_USE_SSL,
     CONF_USERNAME,
     CONF_VERIFY_SSL,
@@ -31,7 +33,10 @@ from .const import (
     DEFAULT_MIN_RSSI,
     DEFAULT_RECENT_DEVICES_WINDOW,
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TRACK_ALL_LOOKBACK_SEC,
     DEFAULT_VERIFY_SSL,
+    TRACK_ALL_LOOKBACK_MAX_SEC,
+    TRACK_ALL_LOOKBACK_MIN_SEC,
     DOMAIN,
     LOGGER,
     RSSI_HOME_DISABLED_THRESHOLD,
@@ -71,7 +76,7 @@ class KismetCoordinatorData:
 
 
 class KismetDataUpdateCoordinator(DataUpdateCoordinator[KismetCoordinatorData]):
-    """Poll Kismet for whitelisted MACs and optional air-activity metrics."""
+    """Poll Kismet (allow list or last-time window) and optional air-activity metrics."""
 
     config_entry: ConfigEntry
 
@@ -104,8 +109,19 @@ class KismetDataUpdateCoordinator(DataUpdateCoordinator[KismetCoordinatorData]):
         auth = aiohttp.BasicAuth(user, pwd) if user and pwd else None
         self._client = KismetClient(self._session, base, auth=auth)
 
+    def track_all_visible(self) -> bool:
+        """When True, poll Kismet last-time window and expose all matching MACs."""
+        merged = merge_entry_config(self.config_entry)
+        return bool(merged.get(CONF_TRACK_ALL_VISIBLE, False))
+
+    def track_all_lookback_sec(self) -> int:
+        """Seconds for last-time query in track-all mode."""
+        merged = merge_entry_config(self.config_entry)
+        raw = int(merged.get(CONF_TRACK_ALL_LOOKBACK_SEC, DEFAULT_TRACK_ALL_LOOKBACK_SEC))
+        return max(TRACK_ALL_LOOKBACK_MIN_SEC, min(TRACK_ALL_LOOKBACK_MAX_SEC, raw))
+
     def whitelisted_macs(self) -> list[str]:
-        """MAC addresses configured for tracking."""
+        """MAC addresses configured for tracking (whitelist mode only)."""
         merged = merge_entry_config(self.config_entry)
         raw = merged.get(CONF_WHITELIST) or []
         if isinstance(raw, str):
@@ -124,7 +140,12 @@ class KismetDataUpdateCoordinator(DataUpdateCoordinator[KismetCoordinatorData]):
         """MACs that should get entity_platform entities (respect random-MAC filter)."""
         merged = merge_entry_config(self.config_entry)
         ignore_rand = bool(merged.get(CONF_IGNORE_RANDOMIZED, True))
-        macs = self.whitelisted_macs()
+        if self.track_all_visible():
+            if not self.data:
+                return []
+            macs = list(self.data.devices.keys())
+        else:
+            macs = self.whitelisted_macs()
         if not ignore_rand:
             return macs
         return [m for m in macs if not is_locally_administered_mac(m)]
@@ -168,11 +189,18 @@ class KismetDataUpdateCoordinator(DataUpdateCoordinator[KismetCoordinatorData]):
         return True
 
     async def _async_update_data(self) -> KismetCoordinatorData:
-        macs = self.whitelisted_macs()
-        if not macs:
-            LOGGER.warning("Kismet tracker has empty whitelist; no devices will be tracked")
         try:
-            raw_list = await self._client.fetch_devices_for_macs(macs)
+            if self.track_all_visible():
+                lookback = self.track_all_lookback_sec()
+                raw_list = await self._client.fetch_devices_in_last_seconds(lookback)
+            else:
+                macs = self.whitelisted_macs()
+                if not macs:
+                    LOGGER.warning(
+                        "Kismet tracker: allow list is empty; enable 'Track all visible "
+                        "devices' or add MAC addresses"
+                    )
+                raw_list = await self._client.fetch_devices_for_macs(macs)
         except aiohttp.ClientResponseError as err:
             raise UpdateFailed(f"Kismet HTTP error: {err.status}") from err
         except aiohttp.ClientError as err:

@@ -7,6 +7,18 @@ from typing import Any
 import aiohttp
 
 
+def _parse_device_list_payload(data: Any) -> list[dict[str, Any]]:
+    """Normalize Kismet JSON list or wrapper dict to a list of device records."""
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("kismet.device.list", "devices"):
+            inner = data.get(key)
+            if isinstance(inner, list):
+                return inner
+    return []
+
+
 class KismetClient:
     """Minimal Kismet HTTP API wrapper."""
 
@@ -43,29 +55,21 @@ class KismetClient:
         ) as resp:
             resp.raise_for_status()
             data = await resp.json()
-        if isinstance(data, list):
-            return data
-        if isinstance(data, dict) and "kismet.device.list" in data:
-            inner = data["kismet.device.list"]
-            if isinstance(inner, list):
-                return inner
-        return []
+        return _parse_device_list_payload(data)
 
-    async def fetch_recent_device_count(self, seconds: int) -> int:
-        """GET /devices/last-time/-{seconds}/devices.json and count records."""
+    async def fetch_devices_in_last_seconds(self, seconds: int) -> list[dict[str, Any]]:
+        """GET /devices/last-time/-{seconds}/devices.json — devices active in the window."""
         url = f"{self._base}/devices/last-time/-{seconds}/devices.json"
         async with self._session.get(
             url,
             auth=self._auth,
-            timeout=45,
+            timeout=60,
         ) as resp:
             resp.raise_for_status()
             data = await resp.json()
-        if isinstance(data, list):
-            return len(data)
-        if isinstance(data, dict):
-            for key in ("kismet.device.list", "devices"):
-                inner = data.get(key)
-                if isinstance(inner, list):
-                    return len(inner)
-        return 0
+        return _parse_device_list_payload(data)
+
+    async def fetch_recent_device_count(self, seconds: int) -> int:
+        """Count devices in last-time window (same endpoint as fetch_devices_in_last_seconds)."""
+        devices = await self.fetch_devices_in_last_seconds(seconds)
+        return len(devices)

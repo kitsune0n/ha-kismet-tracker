@@ -1,4 +1,4 @@
-"""Kismet-backed device_tracker entities (whitelist only)."""
+"""Kismet-backed device_tracker entities (allow list or all visible in time window)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from homeassistant.components.device_tracker.config_entry import TrackerEntity
 from homeassistant.components.device_tracker.const import SourceType
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_HOME, STATE_NOT_HOME
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -23,8 +23,23 @@ async def async_setup_entry(
 ) -> None:
     """Set up device_tracker platform."""
     coordinator: KismetDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    macs = coordinator.tracked_macs()
-    async_add_entities(KismetDeviceTracker(coordinator, mac) for mac in macs)
+    if coordinator.track_all_visible():
+        added: set[str] = set()
+
+        @callback
+        def _add_new_entities() -> None:
+            macs = coordinator.tracked_macs()
+            new = [m for m in macs if m not in added]
+            if not new:
+                return
+            async_add_entities(KismetDeviceTracker(coordinator, m) for m in new)
+            added.update(new)
+
+        _add_new_entities()
+        entry.async_on_unload(coordinator.async_add_listener(_add_new_entities))
+    else:
+        macs = coordinator.tracked_macs()
+        async_add_entities(KismetDeviceTracker(coordinator, mac) for mac in macs)
 
 
 class KismetDeviceTracker(

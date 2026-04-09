@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Kismet Tracker",
-        "description": "Connect to the Kismet REST API (port 2501 by default). Only MAC addresses you list are tracked.",
+        "description": "Connect to the Kismet REST API (port 2501 by default). Either track every device Kismet reports in a recent time window, or only MAC addresses you list.",
         "data": {
           "host": "Kismet host or IP",
           "port": "HTTP port",
@@ -12,7 +12,9 @@
           "username": "HTTP username (optional)",
           "password": "HTTP password (optional)",
           "scan_interval": "Polling interval (seconds)",
-          "whitelist": "MAC allow list (comma or newline separated)",
+          "track_all_visible_devices": "Track all devices Kismet reports in the last-time window (many entities)",
+          "track_all_lookback_sec": "Last-time window (seconds) when tracking all visible devices; Kismet /devices/last-time/-N",
+          "whitelist": "MAC allow list when the option above is off (comma or newline separated)",
           "ignore_randomized_local_mac": "Ignore locally administered (randomized) MACs in the allow list",
           "away_timeout": "Away timeout (seconds) since last Kismet observation",
           "min_rssi_for_home": "Minimum RSSI for home (-200 disables RSSI gate)",
@@ -22,10 +24,12 @@
       },
       "init": {
         "title": "Kismet Tracker options",
-        "description": "Adjust polling, allow list, and optional RF activity sensor.",
+        "description": "Adjust polling, tracking mode, allow list, and optional RF activity sensor.",
         "data": {
           "scan_interval": "Polling interval (seconds)",
-          "whitelist": "MAC allow list (comma or newline separated)",
+          "track_all_visible_devices": "Track all devices Kismet reports in the last-time window (many entities)",
+          "track_all_lookback_sec": "Last-time window (seconds) when tracking all visible devices; Kismet /devices/last-time/-N",
+          "whitelist": "MAC allow list when the option above is off (comma or newline separated)",
           "ignore_randomized_local_mac": "Ignore locally administered (randomized) MACs in the allow list",
           "away_timeout": "Away timeout (seconds) since last Kismet observation",
           "min_rssi_for_home": "Minimum RSSI for home (-200 disables RSSI gate)",
@@ -36,7 +40,32 @@
     },
     "error": {
       "cannot_connect": "Could not reach the Kismet API",
-      "invalid_mac": "Invalid MAC address in the allow list"
+      "invalid_mac": "Invalid MAC address in the allow list",
+      "whitelist_required": "Enter at least one MAC or enable tracking all visible devices"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kismet Tracker options",
+        "description": "Adjust polling, tracking mode, allow list, and optional RF activity sensor.",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "track_all_visible_devices": "Track all devices Kismet reports in the last-time window (many entities)",
+          "track_all_lookback_sec": "Last-time window (seconds) when tracking all visible devices; Kismet /devices/last-time/-N",
+          "whitelist": "MAC allow list when the option above is off (comma or newline separated)",
+          "ignore_randomized_local_mac": "Ignore locally administered (randomized) MACs in the allow list",
+          "away_timeout": "Away timeout (seconds) since last Kismet observation",
+          "min_rssi_for_home": "Minimum RSSI for home (-200 disables RSSI gate)",
+          "enable_air_sensors": "Enable recent RF device count sensor",
+          "recent_devices_window": "Seconds for recent-device window sensor"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not reach the Kismet API",
+      "invalid_mac": "Invalid MAC address in the allow list",
+      "whitelist_required": "Enter at least one MAC or enable tracking all visible devices"
     }
   }
 }
